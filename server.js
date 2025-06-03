@@ -34,7 +34,7 @@ app.get("/download", async (req, res) => {
     });
 
     ffmpeg(audioStream)
-      .audioBitrate(128)
+      .audioBitrate(320)
       .format("mp3")
       .on("error", (err) => {
         console.error("FFmpeg error:", err);

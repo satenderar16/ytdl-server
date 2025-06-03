@@ -13,6 +13,9 @@ function sanitizeFilename(name) {
     .replace(/[^\x00-\x7F]/g, "") // Strip non-ASCII characters
     .trim();
 }
+app.get("/", (req, res) => {
+  res.send("home");
+});
 
 app.get("/download", async (req, res) => {
   const { url } = req.query;
@@ -34,7 +37,7 @@ app.get("/download", async (req, res) => {
     });
 
     ffmpeg(audioStream)
-      .audioBitrate(320)
+      .audioBitrate(192)
       .format("mp3")
       .on("error", (err) => {
         console.error("FFmpeg error:", err);

@@ -26,24 +26,59 @@ app.get("/download", async (req, res) => {
 
   try {
     const info = await ytdl.getInfo(url);
-    const title = sanitizeFilename(info.videoDetails.title) || "audio";
-
-    res.setHeader("Content-Disposition", `attachment; filename="${title}.mp3"`);
-    res.setHeader("Content-Type", "audio/mpeg");
+    const baseTitle = sanitizeFilename(info.videoDetails.title) || "audio";
 
     const audioStream = ytdl(url, {
       filter: "audioonly",
       quality: "highestaudio",
     });
 
-    ffmpeg(audioStream)
-      .audioBitrate(192)
-      .format("mp3")
-      .on("error", (err) => {
-        console.error("FFmpeg error:", err);
-        res.status(500).end("Conversion error");
-      })
-      .pipe(res, { end: true });
+    ffmpeg.getAvailableEncoders((err, encoders) => {
+      if (err) {
+        console.error("Error checking encoders:", err);
+        res.status(500).end("Internal error");
+        return;
+      }
+
+      let codec = null;
+      let format = null;
+      let extension = null;
+      let contentType = null;
+
+      if (encoders["aac"]) {
+        codec = "aac";
+        format = "adts";
+        extension = "aac";
+        contentType = "audio/aac";
+        console.log("Using AAC codec");
+      } else if (encoders["libmp3lame"]) {
+        codec = "libmp3lame";
+        format = "mp3";
+        extension = "mp3";
+        contentType = "audio/mpeg";
+        console.log("Using MP3 codec");
+      } else {
+        console.error("Neither AAC nor MP3 codec available");
+        res.status(500).end("No supported audio codec available");
+        return;
+      }
+
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${baseTitle}.${extension}"`
+      );
+      res.setHeader("Content-Type", contentType);
+
+      ffmpeg(audioStream)
+        .audioCodec(codec)
+        .audioBitrate(512)
+        .format(format)
+        .on("error", (err) => {
+          console.error("FFmpeg error:", err);
+          res.status(500).end("Conversion error");
+        })
+        .pipe(res, { end: true });
+    });
   } catch (err) {
     console.error("Download error:", err);
     res.status(500).send("Failed to download");
